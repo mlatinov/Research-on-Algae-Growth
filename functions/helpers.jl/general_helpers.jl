@@ -6,7 +6,7 @@ using DataFrames, DataFramesMeta, CSV
 using DataFrames
 using CSV
 using Random
-import StatsBase: sample
+using StatsBase  
 using Statistics
 
 # Function to load the data in the main script and take a sample from it to speed up the development
@@ -49,14 +49,46 @@ function summarize_algae(;algae_data)
     correlation_matrix = cor(Matrix(algae_data[:, cols]))
     correlation_matrix_df = DataFrame(correlation_matrix, cols)
 
+    # Log-Scale Statistics for Nutrients and Light 
+    log_algae_nutrients = @chain algae_data begin 
+        # Conver the variables into log scale 
+        @transform(
+            log_Light   = log.(:Light),
+            log_Nitrate = log.(:Nitrate),
+            log_Iron    = log.(:Iron),
+            log_Phosphate = log.(:Phosphate)
+        )
+    end 
+    # Summary Statistics on Log(Population)
+    log_population = @chain algae_data begin
+        # Exclude 0 in the population 
+        @subset(:Population .> 0)
+        # Convert population into log scale 
+        @transform(
+            log_population = log.(:Population)
+        )
+    end
+    # Population Skewness with diffrent transformations 
+    skew_population = @chain algae_data begin
+        #  Filter out the zero population counts
+        @subset(:Population .> 0)
+        @combine(
+            population_normal_skew = skewness(:Population),
+            population_log_sker    = skewness(log.(:Population)),
+            population_sqrt        = skewness(sqrt.(:Population))
+        )
+    end
+
     # Combine the results and return a Dict
     combined_results = Dict(
         :near_zero_population_summary => nzc_population_algae,
-        :correlation_matirix          => correlation_matrix_df
+        :correlation_matirix          => correlation_matrix_df,
+        :log_algae_nutrients          => log_algae_nutrients,
+        :log_population               => log_population,
+        :algae_data                   => algae_data,
+        :population_skew              => skew_population
     )
-
     return combined_results
 end
 
 end
-
