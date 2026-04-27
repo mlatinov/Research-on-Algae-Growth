@@ -1,29 +1,26 @@
 
 # Libraries ##
 using Dagger
-using DataFrames, DataFramesMeta
-using Chain
 
 # Include custom Modules ##
 include("functions/helpers.jl/general_helpers.jl")
+include("functions/eda_f/eda_f.jl")
 using .General_helpers
+using .EDA
 
 
 # Pipeline Tasks
 
 # Load the data 
-algae_data = Dagger.@spawn(General_helpers.load_algae(url = "data/algeas.csv", sample_size = 1000))
+algae_data = Dagger.@spawn(General_helpers.load_algae(url = "data/algeas.csv", sample_size = 1000));
 
-# Summary Statics 
-algae_summary = Dagger.@spawn(General_helpers.summarize_algae(algae_data = algae_data)) 
 
+# Exploratory Analysis 
+algae_eda = Dagger.@spawn(EDA.eda_f(algae_data = algae_data));
+ 
 
 
 # Run the Pipeline 
-algae_data_fetch = fetch(algae_summary)
-
-algae_data_fetch[:correlation_matirix]
-
-
-
+eda = fetch(algae_eda)
+eda[:log_population_plot]
 
