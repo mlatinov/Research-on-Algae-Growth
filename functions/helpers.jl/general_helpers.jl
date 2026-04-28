@@ -82,7 +82,7 @@ function summarize_algae(;algae_data)
     # Combine the results and return a Dict
     combined_results = Dict(
         :near_zero_population_summary => nzc_population_algae,
-        :correlation_matirix          => correlation_matrix_df,
+        :correlation_matrix           => correlation_matrix_df,
         :log_algae_nutrients          => log_algae_nutrients,
         :log_population               => log_population,
         :algae_data                   => algae_data,
