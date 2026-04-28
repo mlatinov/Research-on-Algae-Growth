@@ -4,6 +4,7 @@ module Ploting_helpers
 
 using StatsPlots
 using Plots
+using Statistics
 
 # Histogram of Y and log(Y)
 export plot_y_vs_log_y
@@ -33,7 +34,69 @@ end
 
 # Histogram of features distributions 
 export plot_distributions
-function plot_distributions(;algae_data)
 
+function plot_distributions(; algae_data, x)
+    theme(:rose_pine)
+
+    col = x isa Symbol ? x : Symbol(x)
+
+    hist_plot = histogram(
+        algae_data[!, col],
+        title = "Histogram of $col",
+        xlabel = string(col),
+        ylabel = "Counts",
+        size = (400, 400)
+    )
+    return hist_plot
 end
+
+#### Function to plot Combined Scatter Plots ####
+export plot_scatters
+
+function plot_scatters(;algae_data)
+    combined_scatter = cornerplot(
+        Matrix(algae_data),
+        title = "Combined Algae Cornerplot",
+        size  = (1400, 1400),
+        compact = true
+    )
+    return combined_scatter
+end
+
+#### Function to plot a heatmap with correlation matrix x#### 
+export corr_heatmap
+
+function corr_heatmap(; algae_data)
+
+    # Create a simple correlation matrix
+    cols = names(algae_data, Real)
+    corr_mat = cor(Matrix(algae_data[:, cols]))
+
+    # Plot it 
+    corr_heatmap = heatmap(
+        cols,
+        cols,
+        corr_mat,
+        title = "Algae Correlation Heatmap",
+        c = :coolwarm
+    )
+    return corr_heatmap
+end
+
+#### Function to plot a single Scatterplot ####
+export single_scatter
+
+function single_scatter(; algae_data, x, y)
+
+    x_symbol = x isa Symbol ? x : Symbol(x)
+    y_symbol = y isa Symbol ? y : Symbol(y)
+
+    single_scatter = scatter(
+        algae_data[!, x_symbol],
+        algae_data[!, y_symbol]
+    )
+    return single_scatter
+end
+
+
 end
