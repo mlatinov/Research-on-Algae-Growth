@@ -21,7 +21,6 @@ algae_eda = Dagger.@spawn(EDA.eda_f(algae_data = algae_data));
 
 
 # Run the Pipeline 
+data = fetch(algae_data)
+
 eda = fetch(algae_eda)
-eda[:log_population_plot]
-dic = eda[]
-dic[:population_skew]
