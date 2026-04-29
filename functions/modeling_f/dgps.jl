@@ -2,6 +2,7 @@
 #### Functions for Data Generative Processes 
 module DGPs
 
+using Distributions
 using Statistics
 using Distributions
 using DataFrames
@@ -186,5 +187,104 @@ function dgp_eilers_peeters(;
     )
     return sim
 end
+
+# SEM A 
+#=
+SEM-A: Two-Factor Reflective CFA with Quadratic Light Structural Equation
+Group the six secondary predictors into two latent constructs (ηN for
+nutrients; ηC for physicochemical quality) via a reflective CFA measurement model.
+The structural equation follows GLM-1 for the light effect, extended by the two
+latent path coefficients.
+=#
+export dgp_sema
+
+function dgp_sema(;n)
+
+    # Measurement model: Nutrient block 
+    # Draw the latent variables 
+    ψₙ = rand(truncated(Normal(0, 1), 0, Inf), 100);
+    ηₙᵢ = rand.(Normal.(0, ψₙ), 100);
+
+    # Means Paramters coming from sample of 1000 EDA
+    μₙ = 4.5
+    μₑ = 0.105
+    μₚ = 0.105
+
+    # Lambda 
+    λ₁ = 1 # Fixed Reference 
+    λ₂ = rand(Normal(0, 1), 100)
+    λ₃ = rand(Normal(0, 1), 100)
+
+    # Theta Paramters for delta error term
+    θ₁ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₂ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₃ = rand(truncated(Normal(0, 1), 0, Inf),100);
+
+    # Delta error terms
+    δ₁ᵢ = rand.(Normal.(0, θ₁));
+    δ₂ᵢ = rand.(Normal.(0, θ₂));
+    δ₃ᵢ = rand.(Normal.(0, θ₃));
+
+    # Each observed nutrient is a noisy linear function of ηN,i:
+    Nᵢ  = μₙ .+ λ₁ .* ηₙᵢ .+ δ₁ᵢ 
+    Feᵢ = μₑ .+ λ₂ .* ηₙᵢ .+ δ₂ᵢ
+    Pᵢ  = μₚ .+ λ₃ .* ηₙᵢ .+ δ₃ᵢ
+
+    # Measurement model: Physicochemical block
+    # Draw the latent variables 
+    ψᵪ = rand(truncated(Normal(0, 1), 0, Inf), 100);
+    ηᵪᵢ = rand.(Normal.(0, ψᵪ),100);
+
+    # Mean Parameters 
+    μₜ = 20.00;
+    μₕ = 7.5;
+    μᵪ  =  6.0;
+
+    # Lambda 
+    λ₄ = 1 # Fixed Reference 
+    λ₅ = rand(Normal(0, 1), 100)
+    λ₆ = rand(Normal(0, 1), 100)
+
+    # Theta Paramters for delta error term
+    θ₄ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₅ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₆ = rand(truncated(Normal(0, 1), 0, Inf),100);
+
+    # Delta error terms
+    δ₄ᵢ = rand.(Normal.(0, θ₄));
+    δ₅ᵢ = rand.(Normal.(0, θ₅));
+    δ₆ᵢ = rand.(Normal.(0, θ₆));
+    
+    # Each observed nutrient is a noisy linear function of ηᵪᵢ:
+    Tᵢ = μₜ .+ λ₄ .* ηᵪᵢ .+ δ₄ᵢ
+    Hᵢ = μₕ .+ λ₅ .* ηᵪᵢ .+ δ₅ᵢ
+    Cᵢ = μᵪ .+ λ₆ .* ηᵪᵢ .+ δ₆ᵢ
+
+    # Structural model.
+    β₀ = rand(Normal(2500 , 1500), 100);
+    β₁ = rand(truncated(Normal(0, 10), 0, Inf),100)
+    β₂ = rand(truncated(Normal(0, 0.001), -Inf, 0), 100)
+    Ιᵢ = rand(Uniform(40, 2000), 100);
+    γₙ = rand(Normal(0, 50), 100);
+    γᵪ = rand(Normal(0, 50), 100);
+    ζ = rand(Normal(0, 10), 100);
+
+    # Final Eq
+    Yᵢ = β₀ .+ β₁ .*Ιᵢ + β₂ .* Ιᵢ.^2 .+ γₙ .* ηₙᵢ .+ γᵪ .* ηᵪᵢ + ζ;
+
+    # Combine everythin into dataframe 
+    sim = DataFrame(
+        Population  = Yᵢ,
+        Temperature = Tᵢ,
+        Phosphate   = Pᵢ,
+        Light   = Ιᵢ,
+        Nitrate = Nᵢ,
+        Iron    = Feᵢ,
+        pH  = Hᵢ,
+        CO2 = Cᵢ
+    )
+    return sim
+end
+
 
 end
