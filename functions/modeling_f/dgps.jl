@@ -286,5 +286,113 @@ function dgp_sema(;n)
     return sim
 end
 
+#=
+SEM-B: Two-Factor Reflective CFA with Eilers–Peeters Light Structural Equation
+It combines the mechanistic Eilers–Peeters light response (from GLM-3) with the two-factor latent variable structure (from SEM-A).
+=#
+export dgp_semb
+
+function dgp_semb(;
+    n,
+    μα  = 0, σ²α  = 10^-4,
+    μβₑ = 0, σ²βₑ = 0.1,
+    μγₑ = 0, σ²γₑ = 500, 
+    μδ₀  = 0, σ²δ₀ = 500,     
+    μδ₁  = 0, σ²δ₁ = 10^12,
+    )
+
+    # Priors from GLM-3 (for α, βEP, γEP, δ0, δ1)
+    α  = rand(truncated(Normal(μα, σ²α), 0, Inf), n);
+    βₑ = rand(truncated(Normal(μβₑ, σ²βₑ), 0, Inf), n);
+    γₑ = rand(truncated(Normal(μγₑ, σ²γₑ), 0, Inf), n);
+    Ιᵢ = rand(Uniform(40, 2000), 100);
+
+    # Eilers–Peeters PI function
+    fₑ(I, α, βₑ, γₑ) = I ./ (α .* I.^2 .+ βₑ .* I .+ γₑ);
+    PIᵢ = fₑ.(Ιᵢ, α, βₑ, γₑ);
+
+    # Measurement model: Nutrient block 
+    # Draw the latent variables 
+    ψₙ = rand(truncated(Normal(0, 1), 0, Inf), 100);
+    ηₙᵢ = rand.(Normal.(0, ψₙ), 100);
+
+    # Means Paramters coming from sample of 1000 EDA
+    μₙ = 4.5
+    μₑ = 0.105
+    μₚ = 0.105
+
+    # Lambda 
+    λ₁ = 1 # Fixed Reference 
+    λ₂ = rand(Normal(0, 1), 100)
+    λ₃ = rand(Normal(0, 1), 100)
+
+    # Theta Paramters for delta error term
+    θ₁ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₂ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₃ = rand(truncated(Normal(0, 1), 0, Inf),100);
+
+    # Delta error terms
+    δ₁ᵢ = rand.(Normal.(0, θ₁));
+    δ₂ᵢ = rand.(Normal.(0, θ₂));
+    δ₃ᵢ = rand.(Normal.(0, θ₃));
+
+    # Each observed nutrient is a noisy linear function of ηN,i:
+    Nᵢ  = μₙ .+ λ₁ .* ηₙᵢ .+ δ₁ᵢ 
+    Feᵢ = μₑ .+ λ₂ .* ηₙᵢ .+ δ₂ᵢ
+    Pᵢ  = μₚ .+ λ₃ .* ηₙᵢ .+ δ₃ᵢ
+
+    # Measurement model: Physicochemical block
+    # Draw the latent variables 
+    ψᵪ = rand(truncated(Normal(0, 1), 0, Inf), 100);
+    ηᵪᵢ = rand.(Normal.(0, ψᵪ),100);
+
+    # Mean Parameters 
+    μₜ = 20.00;
+    μₕ = 7.5;
+    μᵪ  =  6.0;
+
+    # Lambda 
+    λ₄ = 1 # Fixed Reference 
+    λ₅ = rand(Normal(0, 1), 100)
+    λ₆ = rand(Normal(0, 1), 100)
+
+    # Theta Paramters for delta error term
+    θ₄ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₅ = rand(truncated(Normal(0, 1), 0, Inf),100);
+    θ₆ = rand(truncated(Normal(0, 1), 0, Inf),100);
+
+    # Delta error terms
+    δ₄ᵢ = rand.(Normal.(0, θ₄));
+    δ₅ᵢ = rand.(Normal.(0, θ₅));
+    δ₆ᵢ = rand.(Normal.(0, θ₆));
+    
+    # Each observed nutrient is a noisy linear function of ηᵪᵢ:
+    Tᵢ = μₜ .+ λ₄ .* ηᵪᵢ .+ δ₄ᵢ
+    Hᵢ = μₕ .+ λ₅ .* ηᵪᵢ .+ δ₅ᵢ
+    Cᵢ = μᵪ .+ λ₆ .* ηᵪᵢ .+ δ₆ᵢ
+
+    # Structural model.
+    δ₀ = rand(Normal(μδ₀, σ²δ₀), n);
+    δ₁ = rand(truncated(Normal(μδ₁, σ²δ₁), 0, Inf), n);
+    γₙ = rand(Normal(0, 50), 100);
+    γᵪ = rand(Normal(0, 50), 100);
+    ζ = rand(Normal(0, 10), 100);
+
+    # Final Eq
+    Yᵢ = δ₀ .+ δ₁ .* PIᵢ .+ γₙ .* ηₙᵢ .+ γᵪ .* ηᵪᵢ + ζ;
+
+    # Combine everythin into dataframe 
+    sim = DataFrame(
+        Population  = Yᵢ,
+        Temperature = Tᵢ,
+        Phosphate   = Pᵢ,
+        Light   = Ιᵢ,
+        Nitrate = Nᵢ,
+        Iron    = Feᵢ,
+        pH  = Hᵢ,
+        CO2 = Cᵢ
+    )
+    return sim
+end
 
 end
