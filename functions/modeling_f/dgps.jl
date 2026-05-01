@@ -10,45 +10,56 @@ using DataFrames
 # GLM-1: Baseline Quadratic Regression (Light Only)
 export dgp_quadratic_baseline
 
-function dgp_quadratic_baseline(;
+function dgp_quadratic_baseline(
     n = 1000,
     Ιᵢ_lower = 40,   
     Ιᵢ_upper = 2000,
     μβ₀  = 2500,     
-    σ²β₀ = 1500,     
+    σβ₀ = 1500,     
     μβ₁  = 0,
-    σ²β₁ = 10,
+    σβ₁ = 10,
     μβ₂  = 0,
-    σ²β₂ = 0.01,
-    σ²μ = 0,
-    σ²σ² = 500
+    σβ₂ = 0.01,
+    σμ = 0,
+    σσ = 500
     )
 
     # Light Intensity for observation i 
     Ιᵢ = rand(Uniform(Ιᵢ_lower, Ιᵢ_upper), n);    # Ιᵢ ~ U(lower , upper)
  
     # Paramters 
-    β₀  = rand(Normal(μβ₀, σ²β₀));                      # β₀  ~  Ν(μ, σ) 
-    β₁  = rand(truncated(Normal(μβ₁, σ²β₁), 0, Inf));   # β₁  ~  Ν+(μ, σ)
-    β₂  = rand(truncated(Normal(μβ₂, σ²β₂), -Inf, 0));  # β₂  ~  Ν-(μ, σ)
-    σ²  = rand(truncated(Normal(σ²μ, σ²σ²),0, Inf));    # σ²   ~  N(μ, σ)
+    β₀  = rand(Normal(μβ₀, σβ₀));                      # β₀  ~  Ν(μ, σ) 
+    β₁  = rand(truncated(Normal(μβ₁, σβ₁), 0, Inf));   # β₁  ~  Ν+(μ, σ)
+    β₂  = rand(truncated(Normal(μβ₂, σβ₂), -Inf, 0));  # β₂  ~  Ν-(μ, σ)
+    σ  = rand(truncated(Normal(σμ, σσ),0, Inf));       # σ²   ~  N(μ, σ)
 
     # Compute the conditional mean.
     μᵢ = β₀ .+ β₁ .* Ιᵢ .+ β₂ .* Ιᵢ.^2;
 
     # Draw observed population
-    Yᵢ = max.(0.0, μᵢ .+ σ² .* randn(n));
+    Yᵢ = max.(0.0, μᵢ .+ σ .* randn(n));
 
     # Combine into a Dataframe
     sim = DataFrame(Light = Ιᵢ, Population = Yᵢ);
 
-    return sim
+    # Return the Global Paramters to check for parametric recovery 
+    global_paramters = Dict(
+        :β₀ => β₀,
+        :β₁ => β₁,
+        :β₂ => β₂,
+        :σ => σ
+    )
+    return Dict(
+        :sim_data => sim,
+        :ground_truth => global_paramters
+    )
+
 end 
 
 # GLM-2: Full Additive GLM (Quadratic Light + Six Linear Predictors)
 export dgp_full_quadratic
 
-function dgp_full_quadratic(;
+function dgp_full_quadratic(
     n        = 1000,
     Ιᵢ_lower = 40.0,
     Ιᵢ_upper = 2000.0,
@@ -88,8 +99,9 @@ function dgp_full_quadratic(;
  
     # Observed population 
     Yᵢ = max.(0.0, μᵢ .+ σ .* randn(n))
- 
-    return DataFrame(
+
+    # Combine in a dataframe 
+    sim = DataFrame(
         Population  = Yᵢ,
         Temperature = Tᵢ,
         Phosphate   = Pᵢ,
@@ -99,6 +111,25 @@ function dgp_full_quadratic(;
         pH          = Hᵢ,
         CO2         = Cᵢ
     )
+
+    # Combine the model parameters as a ground truth
+    global_parameters = Dict(
+        :β₀ =>  β₀,
+        :β₁ =>  β₁,
+        :β₂ =>  β₂,
+        :β₃ =>  β₃,
+        :β₄ =>  β₄,
+        :β₅ =>  β₅,
+        :β₆ =>  β₆,
+        :β₇ =>  β₇,
+        :β₈ =>  β₈,
+        :σ  =>  σ
+    )
+    return Dict(
+        :sim_data => sim,
+        :ground_truth => global_parameters
+    )
+
 end
 # GLM-3: Eilers Peeters PI Curve + Linear Secondary Predictors
 #=
@@ -108,7 +139,7 @@ The Eilers Peeters replaces the empirical quadratic with a mechanistically groun
 
 export dgp_eilers_peeters
  
-function dgp_eilers_peeters(;
+function dgp_eilers_peeters(
     n        = 1000,
     Ιᵢ_lower = 40.0,
     Ιᵢ_upper = 2000.0,
@@ -179,7 +210,7 @@ latent path coefficients.
 =#
 export dgp_sema
 
-function dgp_sema(;
+function dgp_sema(
     n        = 1000,
     # Structural model
     μβ₀  = 2500.0,  σβ₀  = 1500.0,
@@ -287,7 +318,7 @@ It combines the mechanistic Eilers–Peeters light response (from GLM-3) with th
 =#
 export dgp_semb
 
-function dgp_semb(;
+function dgp_semb(
     n  = 1000,
     # EP curve parameters
     μα   = 0.0,  σα   = 1e-4,
