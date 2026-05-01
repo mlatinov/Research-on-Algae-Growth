@@ -9,7 +9,7 @@ using .Ploting_helpers
 
 #### Function to Combine summary Statiscs and plots ####
 export eda_f
-function eda_f(;algae_data)
+function eda_f(algae_data)
     # Summary Statics 
     algae_summary = General_helpers.summarize_algae(algae_data = algae_data);
     # Plot Population Vs Log(Population)
