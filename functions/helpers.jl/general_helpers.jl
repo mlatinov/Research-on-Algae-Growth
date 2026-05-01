@@ -12,7 +12,7 @@ using Statistics
 # Function to load the data in the main script and take a sample from it to speed up the development
 export load_algae
 
-function load_algae(;url, sample_size)
+function load_algae(url, sample_size)
     # Laod the data 
     algae_data = CSV.read(url, DataFrame)
     # Take a sample 
