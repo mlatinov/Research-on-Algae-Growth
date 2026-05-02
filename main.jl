@@ -7,10 +7,12 @@ include("functions/helpers.jl/general_helpers.jl")
 include("functions/eda_f/eda_f.jl")
 include("functions/modeling_f/dgps.jl")
 include("functions/modeling_f/bglm_models.jl")
+include("functions/modeling_f/bsem_models.jl")
 using .General_helpers
 using .EDA
 using .DGPs
 using .BGLM
+using .BSEM
 
 # Pipeline Tasks
 
@@ -30,21 +32,40 @@ sim_dgp_1 = Dagger.@spawn(DGPs.dgp_quadratic_baseline(1000));
 sim_dgp_2 = Dagger.@spawn(DGPs.dgp_full_quadratic(1000));
 
 # DGP 3 for the Family of GLMs Eilers Peeters PI Curve + Linear Secondary Predictors
-sim_dgp_3 = Dagger.@spawn(DGPs.dgp_eilers_peeters(1000));
+sim_dgp_3 = Dagger.@spawn(DGPs.dgp_eilers_peeters(5000));
 
 # DGP 4 for the Family of SEMs Two-Factor Reflective CFA with Quadratic Light Structural Equation
-sim_dgp_4 = Dagger.@spawn(DGPs.dgp_sema(1000));
+sim_dgp_4 = Dagger.@spawn(DGPs.dgp_sema(500));
 
 # DGP 5 for the Family of SEMs  Two-Factor Reflective CFA with Eilers–Peeters Light Structural Equation
 sim_dgp_5 = Dagger.@spawn(DGPs.dgp_semb(1000));
 
 # Model Specifications ==============================================================================================
 
-# BM-1 : Baseline Quadratic Regression (Light Only) Test in simulation against DGP 1 for Parametric Recovery 
+# BM-1: Baseline Quadratic Regression (Light Only) Test in simulation against DGP 1 for Parametric Recovery 
 bqrl_sim = Dagger.@spawn(BGLM.bayes_quadratic_regreesion_light(sim_dgp_1, 1000));
 
-# BM-2: Bayesian Full Additive GLM (Quadratic Light + Six Linear Predictors)
+# BM-2: Bayesian Full Additive GLM (Quadratic Light + Six Linear Predictors) for Parametric Recovery 
 bfag_sim = Dagger.@spawn(BGLM.bayes_full_quadratic_regreesion(sim_dgp_2, 1000));
+
+# BM-3: Eilers Peeters PI Curve + Linear Secondary Predictors for Parametric Recovery 
+bepl_sim = Dagger.@spawn(BGLM.bepl_full(sim_dgp_3, 500));
+
+# BM-4: SEM-A: Two-Factor Reflective CFA with Quadratic Light Structural Equation for Parametric Recovery 
+bsema_sim = Dagger.@spawn(BSEM.sema_tfr_cfa_qlse(sim_dgp_4, 1000));
+
+# BM-5: SEM-B: Two-Factor Reflective CFA with Eilers–Peeters Light Structural Equation for Parametric Recovery 
+bsemb_sim = Dagger.@spawn(BSEM)
+
+# Evaluate the Simulation Models ======================================================================================
+# Run the Model with the Actual Data ==================================================================================
 
 
 # Run the Pipeline 
+bsema_sim_results = fetch(bsema_sim)
+describe(bsema_sim_results)
+truth = fetch(sim_dgp_4)
+truth[:ground_truth]
+
+
+
