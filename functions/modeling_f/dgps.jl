@@ -138,65 +138,102 @@ The Eilers Peeters replaces the empirical quadratic with a mechanistically groun
 =#
 
 export dgp_eilers_peeters
- 
+
 function dgp_eilers_peeters(
     n        = 1000,
     Ιᵢ_lower = 40.0,
-    Ιᵢ_upper = 2000.0,
-    μα   = 0.0,  σα   = 1e-4,   #  photoinhibition curvature
-    μβₑ  = 0.0,  σβₑ  = 0.1,    #  light-saturation term
-    μγₑ  = 0.0,  σγₑ  = 100.0,  
-    μδ₀  = 0.0,  σδ₀  = 500.0,  # intercept 
-    μδ₁  = 0.0,  σδ₁  = 2000.0, 
-    μδⱼ  = 0.0,  σδⱼ  = 50.0,   # secondary predictor coefficients
+    Ιᵢ_upper = 2000.0;
+    # Biological EP parameters 
+    μI_star = 1000.0, σI_star = 300.0,
+    I_star_lo = 100.0, I_star_hi = 2500.0,
+    σα₀ = 0.05,
+    σPm = 0.1,
+    # Structural parameters 
+    σδ₀  = 500.0,
+    σδ₁  = 2000.0,
+    σδⱼ  = 50.0,
     σσ   = 500.0
     )
- 
-    # Observation  covariates 
+
+    # Environmental covariates
     Ιᵢ  = rand(Uniform(Ιᵢ_lower, Ιᵢ_upper), n)
+    Nᵢ  = rand(Uniform(1.00,  8.00), n)
     Feᵢ = rand(Uniform(0.01,  0.20), n)
-    Tᵢ  = rand(Uniform(10.00, 30.0), n)
-    Cᵢ  = rand(Uniform(2.00,  10.0), n)
-    Nᵢ  = rand(Uniform(1.00,   8.0), n)
     Pᵢ  = rand(Uniform(0.01,  0.20), n)
-    Hᵢ  = rand(Uniform(7.00,   8.0), n)
- 
-    # EP curve parameters
-    α  = rand(truncated(Normal(μα,  σα),  0.0, Inf))
-    βₑ = rand(truncated(Normal(μβₑ, σβₑ), 0.0, Inf))
-    γₑ = rand(truncated(Normal(μγₑ, σγₑ), 0.0, Inf))
- 
-    # EP curve evaluated 
-    PIᵢ = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
- 
-    # Structural parameters:
-    δ₀ = rand(Normal(μδ₀, σδ₀))
-    δ₁ = rand(truncated(Normal(μδ₁, σδ₁), 0.0, Inf)) 
-    δ₂ = rand(Normal(μδⱼ, σδⱼ))
-    δ₃ = rand(Normal(μδⱼ, σδⱼ))
-    δ₄ = rand(Normal(μδⱼ, σδⱼ))
-    δ₅ = rand(Normal(μδⱼ, σδⱼ))
-    δ₆ = rand(Normal(μδⱼ, σδⱼ))
-    δ₇ = rand(Normal(μδⱼ, σδⱼ))
+    Tᵢ  = rand(Uniform(10.0, 30.0),  n)
+    Hᵢ  = rand(Uniform(7.00,  8.00), n)
+    Cᵢ  = rand(Uniform(2.00, 10.0),  n)
+
+    # Draw biological EP parameters 
+    I_star = rand(truncated(Normal(μI_star, σI_star), I_star_lo, I_star_hi))
+    α₀     = rand(truncated(Normal(0.0, σα₀), 0.0, Inf))
+    Pm     = rand(truncated(Normal(0.0, σPm),  0.0, Inf))
+
+    # Recover the raw EP parameters 
+    γₑ = 1.0 / α₀
+    α  = γₑ / I_star^2
+    βₑ = 1.0/Pm - 2.0 * sqrt(α * γₑ)
+
+    # if βₑ ≤ 0 the curve is not unimodal 
+    attempts = 0
+    while βₑ <= 0.0
+        attempts += 1
+        attempts > 1000 && error("Could not draw valid EP parameters after 1000 attempts. " *
+                                  "Check that σPm is small enough (Pm < α₀·I_star/2 required).")
+        I_star = rand(truncated(Normal(μI_star, σI_star), I_star_lo, I_star_hi))
+        α₀     = rand(truncated(Normal(0.0, σα₀), 0.0, Inf))
+        Pm     = rand(truncated(Normal(0.0, σPm),  0.0, Inf))
+        γₑ = 1.0 / α₀
+        α  = γₑ / I_star^2
+        βₑ = 1.0/Pm - 2.0 * sqrt(α * γₑ)
+    end
+
+    # Normalised PI curve 
+    fPI  = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
+    fPIn = fPI ./ Pm
+
+    # Structural parameters
+    δ₀ = rand(Normal(0.0, σδ₀))
+    δ₁ = rand(truncated(Normal(0.0, σδ₁), 0.0, Inf))
+    δ₂ = rand(Normal(0.0, σδⱼ))   # Nitrate
+    δ₃ = rand(Normal(0.0, σδⱼ))   # Iron
+    δ₄ = rand(Normal(0.0, σδⱼ))   # Phosphate
+    δ₅ = rand(Normal(0.0, σδⱼ))   # Temperature
+    δ₆ = rand(Normal(0.0, σδⱼ))   # pH
+    δ₇ = rand(Normal(0.0, σδⱼ))   # CO₂
     σ  = rand(truncated(Normal(0.0, σσ), 0.0, Inf))
- 
+
     # Conditional mean 
-    μᵢ = δ₀ .+ δ₁ .* PIᵢ .+
-        δ₂ .* Nᵢ .+ δ₃ .* Feᵢ .+ δ₄ .* Pᵢ .+
-        δ₅ .* Tᵢ .+ δ₆ .* Hᵢ .+ δ₇ .* Cᵢ
- 
+    μᵢ = δ₀ .+ δ₁ .* fPIn .+
+         δ₂ .* Nᵢ .+ δ₃ .* Feᵢ .+ δ₄ .* Pᵢ .+
+         δ₅ .* Tᵢ .+ δ₆ .* Hᵢ .+ δ₇ .* Cᵢ
+
     # Observed population 
     Yᵢ = max.(0.0, μᵢ .+ σ .* randn(n))
- 
-    return DataFrame(
+
+    # Ground truth
+    param_recovery = Dict{Symbol, Float64}(
+        :I_star => I_star, :α₀ => α₀,    :Pm  => Pm,
+        :α      => α,      :βₑ => βₑ,    :γₑ  => γₑ,
+        :δ₀     => δ₀,     :δ₁ => δ₁,   :δ₂  => δ₂,
+        :δ₃     => δ₃,     :δ₄ => δ₄,   :δ₅  => δ₅,
+        :δ₆     => δ₆,     :δ₇ => δ₇,   :σ   => σ,
+    )
+
+    sim_data = DataFrame(
         Population  = Yᵢ,
-        Temperature = Tᵢ,
-        Phosphate   = Pᵢ,
         Light       = Ιᵢ,
         Nitrate     = Nᵢ,
         Iron        = Feᵢ,
+        Phosphate   = Pᵢ,
+        Temperature = Tᵢ,
         pH          = Hᵢ,
         CO2         = Cᵢ
+    )
+
+    return Dict{Symbol, Any}(
+        :sim_data     => sim_data,
+        :ground_truth => param_recovery
     )
 end
 
@@ -299,8 +336,32 @@ function dgp_sema(
         σ .* randn(n)
 
     Yᵢ = max.(0.0, Yᵢ)
- 
-    return DataFrame(
+
+    # Collect the model paramters for recovery 
+    param_recovery = Dict{Symbol, Any}(
+        # Structural equation
+        :β₀ => β₀,  :β₁ => β₁,  :β₂ => β₂,
+        :γₙ => γₙ,  :γᵪ => γᵪ,  :σ  => σ,
+        
+        # Latent variable scales
+        :ψₙ => ψₙ,  :ψᵪ => ψᵪ,
+        
+        # Free loadings
+        :λ₂ => λ₂,  :λ₃ => λ₃,
+        :λ₅ => λ₅,  :λ₆ => λ₆,
+        
+        # Measurement error SDs
+        :θ₁ => θ₁,  :θ₂ => θ₂,  :θ₃ => θ₃,
+        :θ₄ => θ₄,  :θ₅ => θ₅,  :θ₆ => θ₆,
+    )
+    # Store latent vectors separately for diagnostic plots
+    latent_truth = Dict{Symbol, Vector{Float64}}(
+        :eta_N => ηₙᵢ,
+        :eta_C => ηᵪᵢ,
+    )
+
+    # Retrun the simulated data 
+    sim_data = DataFrame(
         Population  = Yᵢ,
         Temperature = Tᵢ,
         Phosphate   = Pᵢ,
@@ -310,6 +371,12 @@ function dgp_sema(
         pH          = Hᵢ,
         CO2         = Cᵢ
     )
+    return Dict(
+        :sim_data      => sim_data,
+        :ground_truth  => param_recovery,
+        :latent_truth  => latent_truth
+    ) 
+
 end
 
 #=
@@ -319,111 +386,140 @@ It combines the mechanistic Eilers–Peeters light response (from GLM-3) with th
 export dgp_semb
 
 function dgp_semb(
-    n  = 1000,
-    # EP curve parameters
-    μα   = 0.0,  σα   = 1e-4,
-    μβₑ  = 0.0,  σβₑ  = 0.1,
-    μγₑ  = 0.0,  σγₑ  = 100.0,  
+    n = 1000;
+    # EP biological parameterisation 
+    μI_star  = 1000.0, σI_star  = 300.0,
+    I_star_lo = 100.0, I_star_hi = 2500.0,
+    σα₀      = 0.05,
+    σPm      = 0.1,
     # Structural parameters
-    μδ₀  = 0.0,  σδ₀  = 500.0,
-    μδ₁  = 0.0,  σδ₁  = 2000.0, 
-    μγₙ  = 0.0,  σγₙ  = 50.0,
-    μγᵪ  = 0.0,  σγᵪ  = 50.0,
-    Ι_lower = 40.0,  Ι_upper = 2000.0,
-    σσ   = 500.0,
+    σδ₀ = 500.0, σδ₁ = 2000.0,
+    σγₙ = 50.0,  σγᵪ = 50.0,
+    σσ  = 500.0,
+    # Latent variable SDs
+    σψₙ = 3.0,  σψᵪ = 8.0,
+    # Free factor loadings 
+    σλ₂ = 0.05, σλ₃ = 0.05,
+    σλ₅ = 0.10, σλ₆ = 0.40,
+    # Measurement error SDs 
+    σθ₁ = 1.5,  σθ₂ = 0.03, σθ₃ = 0.03,
+    σθ₄ = 3.0,  σθ₅ = 0.30, σθ₆ = 1.5,
     # Indicator intercepts
-    μₙ   = 4.505,   μₑ   = 0.105,  μₚ   = 0.105,
-    μₜ   = 20.0,    μₕ   = 7.5,    μᵪ   = 6.0,
-    # Latent variable variance priors  
-    σψₙ  = 3.0,
-    σψᵪ  = 8.0,
-    # Loading priors  
-    σλ₂  = 0.05,
-    σλ₃  = 0.05,
-    σλ₅  = 0.10,
-    σλ₆  = 0.40,
-    # Measurement error std priors
-    σθ₁  = 1.5,
-    σθ₂  = 0.03,
-    σθ₃  = 0.03,
-    σθ₄  = 3.0,
-    σθ₅  = 0.30,
-    σθ₆  = 1.5
-    )
- 
-    # EP curve parameters
-    α  = rand(truncated(Normal(μα,  σα),  0.0, Inf))
-    βₑ = rand(truncated(Normal(μβₑ, σβₑ), 0.0, Inf))
-    γₑ = rand(truncated(Normal(μγₑ, σγₑ), 0.0, Inf))
- 
-    # Structural parameters
-    δ₀ = rand(Normal(μδ₀, σδ₀))
-    δ₁ = rand(truncated(Normal(μδ₁, σδ₁), 0.0, Inf))
-    γₙ = rand(Normal(μγₙ, σγₙ))
-    γᵪ = rand(Normal(μγᵪ, σγᵪ))
-    σ  = rand(truncated(Normal(0.0, σσ), 0.0, Inf))
- 
-    # Latent variances
+    μₙ = 4.505, μFe = 0.105, μP = 0.105,
+    μT = 20.0,  μH  = 7.5,   μC = 6.0,
+    # Light range 
+    Ι_lower = 40.0, Ι_upper = 2000.0
+)
+
+    # Draw biological EP parameters 
+    I_star = rand(truncated(Normal(μI_star, σI_star), I_star_lo, I_star_hi))
+    α₀     = rand(truncated(Normal(0.0, σα₀), 0.0, Inf))
+    Pm     = rand(truncated(Normal(0.0, σPm),  0.0, Inf))
+
+    # Recover raw EP parameters analytically 
+    γₑ = 1.0 / α₀
+    α  = γₑ / I_star^2
+    βₑ = 1.0/Pm - 2.0 * sqrt(α * γₑ)
+
+    # Reject draws where βₑ ≤ 0 
+    attempts = 0
+    while βₑ <= 0.0
+        attempts += 1
+        attempts > 1000 && error("Could not draw valid EP parameters after 1000 attempts.")
+        I_star = rand(truncated(Normal(μI_star, σI_star), I_star_lo, I_star_hi))
+        α₀     = rand(truncated(Normal(0.0, σα₀), 0.0, Inf))
+        Pm     = rand(truncated(Normal(0.0, σPm),  0.0, Inf))
+        γₑ = 1.0 / α₀
+        α  = γₑ / I_star^2
+        βₑ = 1.0/Pm - 2.0 * sqrt(α * γₑ)
+    end
+
+    # Structural parameters 
+    δ₀ = rand(Normal(0.0,  σδ₀))
+    δ₁ = rand(truncated(Normal(0.0, σδ₁), 0.0, Inf))
+    γₙ = rand(Normal(0.0,  σγₙ))
+    γᵪ = rand(Normal(0.0,  σγᵪ))
+    σ  = rand(truncated(Normal(0.0, σσ),  0.0, Inf))
+
+    # Latent variable SDs 
     ψₙ = rand(truncated(Normal(0.0, σψₙ), 0.0, Inf))
     ψᵪ = rand(truncated(Normal(0.0, σψᵪ), 0.0, Inf))
- 
-    # Loadings
-    λ₁ = 1.0
+
+    # Factor loadings 
     λ₂ = rand(Normal(0.0, σλ₂))
     λ₃ = rand(Normal(0.0, σλ₃))
-    λ₄ = 1.0
     λ₅ = rand(Normal(0.0, σλ₅))
     λ₆ = rand(Normal(0.0, σλ₆))
- 
-    # Measurement error std-devs
+
+    #  Measurement error SDs 
     θ₁ = rand(truncated(Normal(0.0, σθ₁), 0.0, Inf))
     θ₂ = rand(truncated(Normal(0.0, σθ₂), 0.0, Inf))
     θ₃ = rand(truncated(Normal(0.0, σθ₃), 0.0, Inf))
     θ₄ = rand(truncated(Normal(0.0, σθ₄), 0.0, Inf))
     θ₅ = rand(truncated(Normal(0.0, σθ₅), 0.0, Inf))
     θ₆ = rand(truncated(Normal(0.0, σθ₆), 0.0, Inf))
- 
+
     # Observation-level draws 
     Ιᵢ  = rand(Uniform(Ι_lower, Ι_upper), n)
     ηₙᵢ = rand(Normal(0.0, ψₙ), n)
     ηᵪᵢ = rand(Normal(0.0, ψᵪ), n)
- 
-    # Measurement residuals 
-    δ₁ᵢ = rand(Normal(0.0, θ₁), n)
-    δ₂ᵢ = rand(Normal(0.0, θ₂), n)
-    δ₃ᵢ = rand(Normal(0.0, θ₃), n)
-    δ₄ᵢ = rand(Normal(0.0, θ₄), n)
-    δ₅ᵢ = rand(Normal(0.0, θ₅), n)
-    δ₆ᵢ = rand(Normal(0.0, θ₆), n)
- 
+
     # Measurement model: Nutrient block 
-    Nᵢ  = μₙ .+ λ₁ .* ηₙᵢ .+ δ₁ᵢ
-    Feᵢ = μₑ .+ λ₂ .* ηₙᵢ .+ δ₂ᵢ
-    Pᵢ  = μₚ .+ λ₃ .* ηₙᵢ .+ δ₃ᵢ
- 
+    Nᵢ  = μₙ  .+ 1.0 .* ηₙᵢ .+ rand(Normal(0.0, θ₁), n)
+    Feᵢ = μFe .+ λ₂  .* ηₙᵢ .+ rand(Normal(0.0, θ₂), n)
+    Pᵢ  = μP  .+ λ₃  .* ηₙᵢ .+ rand(Normal(0.0, θ₃), n)
+
     # Measurement model: Physicochemical block 
-    Tᵢ  = μₜ .+ λ₄ .* ηᵪᵢ .+ δ₄ᵢ
-    Hᵢ  = μₕ .+ λ₅ .* ηᵪᵢ .+ δ₅ᵢ
-    Cᵢ  = μᵪ .+ λ₆ .* ηᵪᵢ .+ δ₆ᵢ
- 
-    # EP curve 
-    PIᵢ = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
- 
-    # Structural model 
-    Yᵢ = δ₀ .+ δ₁ .* PIᵢ .+
-         γₙ .* ηₙᵢ .+ γᵪ .* ηᵪᵢ .+
-         σ .* randn(n)   
-    Yᵢ = max.(0.0, Yᵢ)
- 
-    return DataFrame(
+    Tᵢ  = μT .+ 1.0 .* ηᵪᵢ .+ rand(Normal(0.0, θ₄), n)
+    Hᵢ  = μH .+ λ₅  .* ηᵪᵢ .+ rand(Normal(0.0, θ₅), n)
+    Cᵢ  = μC .+ λ₆  .* ηᵪᵢ .+ rand(Normal(0.0, θ₆), n)
+
+    # Normalised PI curve
+    fPI      = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
+    fPI_peak = I_star / (α * I_star^2 + βₑ * I_star + γₑ)  
+    fPIn     = fPI ./ fPI_peak
+
+    # Centred PI curve breaks δ₀–δ₁ funnel kinda.. i hope it does 
+    Ī        = mean(Ιᵢ)
+    fPI_mean = Ī / (α * Ī^2 + βₑ * Ī + γₑ)
+    fPIn_c   = fPIn .- (fPI_mean / fPI_peak)
+
+    # Structural equation 
+    μᵢ = δ₀ .+ δ₁ .* fPIn_c .+ γₙ .* ηₙᵢ .+ γᵪ .* ηᵪᵢ
+    Yᵢ = max.(0.0, μᵢ .+ σ .* randn(n))
+
+    # Ground truth
+    param_recovery = Dict{Symbol, Any}(
+        # EP biological parameters 
+        :I_star => I_star, :α₀ => α₀, :Pm => Pm,
+        # EP raw parameters 
+        :α => α, :βₑ => βₑ, :γₑ => γₑ,
+        # Structural equation
+        :δ₀ => δ₀, :δ₁ => δ₁,
+        :γₙ => γₙ, :γᵪ => γᵪ, :σ => σ,
+        # Latent variable scales
+        :ψₙ => ψₙ, :ψᵪ => ψᵪ,
+        # Free loadings 
+        :λ₂ => λ₂, :λ₃ => λ₃,
+        :λ₅ => λ₅, :λ₆ => λ₆,
+        # Measurement error SDs
+        :θ₁ => θ₁, :θ₂ => θ₂, :θ₃ => θ₃,
+        :θ₄ => θ₄, :θ₅ => θ₅, :θ₆ => θ₆,
+    )
+    sim_data = DataFrame(
         Population  = Yᵢ,
-        Temperature = Tᵢ,
-        Phosphate   = Pᵢ,
         Light       = Ιᵢ,
         Nitrate     = Nᵢ,
         Iron        = Feᵢ,
+        Phosphate   = Pᵢ,
+        Temperature = Tᵢ,
         pH          = Hᵢ,
         CO2         = Cᵢ
+    )
+
+    return Dict{Symbol, Any}(
+        :sim_data     => sim_data,
+        :ground_truth => param_recovery
     )
 end
 
