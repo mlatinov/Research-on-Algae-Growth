@@ -5,10 +5,13 @@ using Turing
 # BM-1: Bayesian Quadratic Regression (Light Only)
 export bayes_quadratic_regreesion_light
 
-function bayes_quadratic_regreesion_light(data, iters = 1000)
+function bayes_quadratic_regreesion_light(model_data, iters = 1000, sim = true)
 
-    # Get the simulation data from the DGP
-    sim_data = data[:sim_data]
+    # Check if we are running real data or simulation
+    if sim 
+        # Get the simulation data from the DGP
+        model_data = model_data[:sim_data]
+    end 
 
     # Model Specification 
     @model function bqrl(I, Y)
@@ -36,7 +39,7 @@ function bayes_quadratic_regreesion_light(data, iters = 1000)
     end
 
     # Specify the model with the data 
-    bqrl_model = bqrl(sim_data.Light, sim_data.Population)
+    bqrl_model = bqrl(model_data.Light, model_data.Population)
 
     # Sampler NUTS
     chain = sample(bqrl_model, NUTS(0.65), MCMCSerial(), iters, 4)
@@ -48,10 +51,13 @@ end
 # BM-2: Bayesian Full Additive GLM (Quadratic Light + Six Linear Predictors)
 export bayes_full_quadratic_regreesion
 
-function bayes_full_quadratic_regreesion(data, iters = 1000)
+function bayes_full_quadratic_regreesion(model_data, iters = 1000, sim = false)
 
-    # Get the simulation data from the DGP
-    sim_data = data[:sim_data]
+    # Check if we are running real data or simulation
+    if sim 
+        # Get the simulation data from the DGP
+        model_data = model_data[:sim_data]
+    end 
 
     # Model Specification 
     @model function bfqr(Ιᵢ,Nᵢ,Feᵢ,Pᵢ,Tᵢ,Hᵢ,Cᵢ,Y)
@@ -85,14 +91,14 @@ function bayes_full_quadratic_regreesion(data, iters = 1000)
 
     # Specify the model with the data 
     bfqr_model = bfqr(
-        sim_data.Light,
-        sim_data.Nitrate,
-        sim_data.Iron,
-        sim_data.Phosphate,
-        sim_data.Temperature,
-        sim_data.pH,
-        sim_data.CO2,
-        sim_data.Population
+        model_data.Light,
+        model_data.Nitrate,
+        model_data.Iron,
+        model_data.Phosphate,
+        model_data.Temperature,
+        model_data.pH,
+        model_data.CO2,
+        model_data.Population
     )
 
     # Sample 
