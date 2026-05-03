@@ -1,6 +1,6 @@
-
-# Libraries ##
+# Libraries 
 using Dagger
+using DataFrames
 
 # Include custom Modules ##
 include("functions/helpers.jl/general_helpers.jl")
@@ -8,11 +8,13 @@ include("functions/eda_f/eda_f.jl")
 include("functions/modeling_f/dgps.jl")
 include("functions/modeling_f/bglm_models.jl")
 include("functions/modeling_f/bsem_models.jl")
+include("functions/modeling_f/diagnostics.jl")
 using .General_helpers
 using .EDA
 using .DGPs
 using .BGLM
 using .BSEM
+using .Diagnostics
 
 # Pipeline Tasks
 
@@ -55,17 +57,24 @@ bepl_sim = Dagger.@spawn(BGLM.bepl_full(sim_dgp_3, 500));
 bsema_sim = Dagger.@spawn(BSEM.sema_tfr_cfa_qlse(sim_dgp_4, 1000));
 
 # BM-5: SEM-B: Two-Factor Reflective CFA with Eilers–Peeters Light Structural Equation for Parametric Recovery 
-bsemb_sim = Dagger.@spawn(BSEM)
+bsemb_sim = Dagger.@spawn(BSEM.semb_tfr_cfa_ep_light(sim_dgp_5, 1000));
 
-# Evaluate the Simulation Models ======================================================================================
 # Run the Model with the Actual Data ==================================================================================
 
+# BM-1: Baseline Quadratic Regression (Light Only) Real Data 
+bqrl_real = Dagger.@spawn(BGLM.bayes_quadratic_regreesion_light(algae_data, 1000, false));
 
-# Run the Pipeline 
-bsema_sim_results = fetch(bsema_sim)
-describe(bsema_sim_results)
-truth = fetch(sim_dgp_4)
-truth[:ground_truth]
+# BM-2: Bayesian Full Additive GLM (Quadratic Light + Six Linear Predictors) Real data 
+bfag_real = Dagger.@spawn(BGLM.bayes_full_quadratic_regreesion(algae_data, 1000, false));
+
+# Convergent Diagnostics ==============================================================================================
+bqrl_real_conv = Dagger.@spawn(Diagnostics.conv_diagnostics(bqrl_real));
+bfag_real_conv = Dagger.@spawn(Diagnostics.conv_diagnostics(bfag_real));
+
+
+
+
+# Posterior Predictive Checks =========================================================================================
 
 
 
