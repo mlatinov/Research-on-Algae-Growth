@@ -1,7 +1,7 @@
 module BSEM
 
 using Turing 
-using DataFrames
+using DataFrames  
 
 # BM-4: SEM-A: Two-Factor Reflective CFA with Quadratic Light Structural Equation for Parametric Recovery 
 export sema_tfr_cfa_qlse
@@ -94,7 +94,7 @@ end
 # SEM-B: Two-Factor Reflective CFA with Eilers–Peeters Light Structural Equation
 export semb_tfr_cfa_ep_light
 
-function semb_tfr_cfa_ep_light()
+function semb_tfr_cfa_ep_light(data, iters)
 
 
     
