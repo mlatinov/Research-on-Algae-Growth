@@ -150,7 +150,7 @@ function dgp_eilers_peeters(
     σPm = 0.1,
     # Structural parameters 
     σδ₀  = 500.0,
-    σδ₁  = 2000.0,
+    σδ₁  = 500.0,
     σδⱼ  = 50.0,
     σσ   = 500.0
     )
@@ -189,32 +189,42 @@ function dgp_eilers_peeters(
     end
 
     # Normalised PI curve 
-    fPI  = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
-    fPIn = fPI ./ Pm
+    fPI      = Ιᵢ ./ (α .* Ιᵢ.^2 .+ βₑ .* Ιᵢ .+ γₑ)
+    fPI_peak = I_star / (α * I_star^2 + βₑ * I_star + γₑ)
+    fPIn     = fPI ./ fPI_peak
+    fPIn_s   = (fPIn .- mean(fPIn)) ./ std(fPIn)
+
+    # Standardise all secondary predictors too 
+    Nᵢ_s  = (Nᵢ  .- mean(Nᵢ))  ./ std(Nᵢ)
+    Feᵢ_s = (Feᵢ .- mean(Feᵢ)) ./ std(Feᵢ)
+    Pᵢ_s  = (Pᵢ  .- mean(Pᵢ))  ./ std(Pᵢ)
+    Tᵢ_s  = (Tᵢ  .- mean(Tᵢ))  ./ std(Tᵢ)
+    Hᵢ_s  = (Hᵢ  .- mean(Hᵢ))  ./ std(Hᵢ)
+    Cᵢ_s  = (Cᵢ  .- mean(Cᵢ))  ./ std(Cᵢ)
 
     # Structural parameters
+    σ  = rand(truncated(Normal(0.0, σσ), 0.0, Inf))
     δ₀ = rand(Normal(0.0, σδ₀))
-    δ₁ = rand(truncated(Normal(0.0, σδ₁), 0.0, Inf))
+    δ₁ = rand(truncated(Normal(500.0, 500.0), max(200.0, 2*σ), Inf))
     δ₂ = rand(Normal(0.0, σδⱼ))   # Nitrate
     δ₃ = rand(Normal(0.0, σδⱼ))   # Iron
     δ₄ = rand(Normal(0.0, σδⱼ))   # Phosphate
     δ₅ = rand(Normal(0.0, σδⱼ))   # Temperature
     δ₆ = rand(Normal(0.0, σδⱼ))   # pH
     δ₇ = rand(Normal(0.0, σδⱼ))   # CO₂
-    σ  = rand(truncated(Normal(0.0, σσ), 0.0, Inf))
 
     # Conditional mean 
-    μᵢ = δ₀ .+ δ₁ .* fPIn .+
-         δ₂ .* Nᵢ .+ δ₃ .* Feᵢ .+ δ₄ .* Pᵢ .+
-         δ₅ .* Tᵢ .+ δ₆ .* Hᵢ .+ δ₇ .* Cᵢ
+    μᵢ = δ₀ .+ δ₁ .* fPIn_s .+
+         δ₂ .* Nᵢ_s .+ δ₃ .* Feᵢ_s .+ δ₄ .* Pᵢ_s .+
+         δ₅ .* Tᵢ_s .+ δ₆ .* Hᵢ_s .+ δ₇ .* Cᵢ_s
 
     # Observed population 
     Yᵢ = max.(0.0, μᵢ .+ σ .* randn(n))
 
     # Ground truth
     param_recovery = Dict{Symbol, Float64}(
-        :I_star => I_star, :α₀ => α₀,    :Pm  => Pm,
-        :α      => α,      :βₑ => βₑ,    :γₑ  => γₑ,
+        :I_star => I_star, :α₀ => α₀,   :Pm  => Pm,
+        :α      => α,      :βₑ => βₑ,   :γₑ  => γₑ,
         :δ₀     => δ₀,     :δ₁ => δ₁,   :δ₂  => δ₂,
         :δ₃     => δ₃,     :δ₄ => δ₄,   :δ₅  => δ₅,
         :δ₆     => δ₆,     :δ₇ => δ₇,   :σ   => σ,
