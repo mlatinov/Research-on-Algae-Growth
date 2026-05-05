@@ -104,8 +104,7 @@ plots_ppc_idata_bm2 = Dagger.@spawn Inference.plot_ppchecks(idata2);
 plots_ppc_idata_bm3 = Dagger.@spawn Inference.plot_ppchecks(idata3);
 
 # Fetch 
-plots_ppc_idata1 = fetch(idata_bm1);
-plots_ppc_idata2 = fetch(idata_bm2);
-plots_ppc_idata3 = fetch(idata_bm3);
-
-plots_ppc_idata1[:sample_stats]
+plots_ppc_idata1 = fetch(plots_ppc_idata_bm1);
+plots_ppc_idata2 = fetch(plots_ppc_idata_bm2);
+plots_ppc_idata3 = fetch(plots_ppc_idata_bm3);
+plots_ppc_idata1[:density]
