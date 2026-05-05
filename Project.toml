@@ -1,0 +1,4 @@
+[deps]
+ArviZ = "131c737c-5715-5e2e-ad31-c244f01c1dc7"
+DataFramesMeta = "1313f7d8-7da2-5740-9ea0-a2ca25f37964"
+ParetoSmooth = "a68b5a21-f429-434e-8bfa-46b447300aac"
