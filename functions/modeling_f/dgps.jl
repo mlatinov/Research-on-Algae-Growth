@@ -339,7 +339,7 @@ function dgp_sema(
     Tᵢ  = μₜ .+ λ₄ .* ηᵪᵢ .+ δ₄ᵢ
     Hᵢ  = μₕ .+ λ₅ .* ηᵪᵢ .+ δ₅ᵢ
     Cᵢ  = μᵪ .+ λ₆ .* ηᵪᵢ .+ δ₆ᵢ
- 
+
     # Structural model 
     Yᵢ = β₀ .+ β₁ .* Ιᵢ .+ β₂ .* Ιᵢ.^2 .+
         γₙ .* ηₙᵢ .+ γᵪ .* ηᵪᵢ .+
@@ -373,20 +373,20 @@ function dgp_sema(
     # Retrun the simulated data 
     sim_data = DataFrame(
         Population  = Yᵢ,
-        Temperature = Tᵢ,
-        Phosphate   = Pᵢ,
         Light       = Ιᵢ,
         Nitrate     = Nᵢ,
         Iron        = Feᵢ,
+        Phosphate   = Pᵢ,
+        Temperature = Tᵢ,
         pH          = Hᵢ,
         CO2         = Cᵢ
     )
+    
     return Dict(
         :sim_data      => sim_data,
         :ground_truth  => param_recovery,
         :latent_truth  => latent_truth
     ) 
-
 end
 
 #=
