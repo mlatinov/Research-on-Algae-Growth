@@ -102,7 +102,7 @@ function bayes_full_quadratic_regreesion(model_data, iters = 1000, sim = true)
     )
 
     # Sample 
-    chain = sample(bfqr_model, NUTS(0.65), MCMCSerial(), iters, 4)
+    chain = sample(bfqr_model, NUTS(0.65), MCMCSerial(), iters, 4, progress = true)
     return chain
 
 end
